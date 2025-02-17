@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Face Recognition - Main</title>
+</head>
+<body>
+    <h1>Welcome to the Face Recognition App</h1>
+    <p>Your camera is active. Data will be displayed below and saved to the database.</p>
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+    <pre id="results"></pre>
+    <script>
+        var user_id = "{{ user_id }}";
+        var session_id = "";
+        // Start a new session for logging data.
+        fetch('/start_session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: user_id })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.session_id){
+                session_id = data.session_id;
+                console.log("Session started:", session_id);
+            } else {
+                console.error("Session not started:", data);
+            }
+        })
+        .catch(err => console.error(err));
+
+        var video = document.getElementById('video');
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
+                video.srcObject = stream;
+                video.play();
+            });
+        }
+        var canvas = document.getElementById('canvas');
+        var context = canvas.getContext('2d');
+
+        function captureFrame() {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            var dataURL = canvas.toDataURL('image/jpeg');
+            fetch('/process_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataURL, session_id: session_id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('results').innerText = JSON.stringify(data, null, 2);
+            })
+            .catch(err => console.error(err));
+        }
+        // Capture and process a frame every second.
+        setInterval(captureFrame, 1000);
+    </script>
+</body>
+</html>

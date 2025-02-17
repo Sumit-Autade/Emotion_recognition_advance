@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Capture Face for Signup</title>
+</head>
+<body>
+    <h1>Capture Your Face for Signup</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <button id="startCapture">Start Capture</button>
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+    <script>
+        var video = document.getElementById('video');
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
+                video.srcObject = stream;
+                video.play();
+            });
+        }
+        document.getElementById('startCapture').addEventListener('click', function() {
+            var capturedImages = [];
+            var captureCount = 0;
+            var captureInterval = setInterval(function() {
+                captureCount++;
+                var canvas = document.getElementById('canvas');
+                var context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                var dataURL = canvas.toDataURL('image/jpeg');
+                capturedImages.push(dataURL);
+                if(captureCount >= 5) {
+                    clearInterval(captureInterval);
+                    fetch('/capture_face', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ images: capturedImages })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if(data.success){
+                            window.location.href = '/login';
+                        } else {
+                            alert('Error: ' + data.error);
+                        }
+                    });
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
